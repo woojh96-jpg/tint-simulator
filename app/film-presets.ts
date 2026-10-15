@@ -17,6 +17,8 @@ export type FilmPreset = {
 };
 
 // These are visual material presets, not measured film or optical specifications.
+// Refraction stays off to avoid a second world render on every driving frame.
+// Exterior panes use calibrated alpha; interior panes filter already lit pixels.
 export const FILMS: Record<FilmId, FilmPreset> = {
   royal101: {
     name: "Royal 101",
@@ -28,7 +30,7 @@ export const FILMS: Record<FilmId, FilmPreset> = {
     clearcoat: 0.3,
     envMapIntensity: 0.65,
     reflectivity: 0.18,
-    transmission: 0.08,
+    transmission: 0,
     interiorTint: "#f1f2ef",
   },
   royal701: {
@@ -41,7 +43,7 @@ export const FILMS: Record<FilmId, FilmPreset> = {
     clearcoat: 1,
     envMapIntensity: 1.7,
     reflectivity: 0.8,
-    transmission: 0.06,
+    transmission: 0,
     interiorTint: "#dcece4",
   },
   royal901: {
@@ -54,7 +56,7 @@ export const FILMS: Record<FilmId, FilmPreset> = {
     clearcoat: 0.2,
     envMapIntensity: 0.5,
     reflectivity: 0.12,
-    transmission: 0.05,
+    transmission: 0,
     interiorTint: "#e6eaee",
   },
   royal801: {
@@ -67,7 +69,7 @@ export const FILMS: Record<FilmId, FilmPreset> = {
     clearcoat: 0.7,
     envMapIntensity: 1.1,
     reflectivity: 0.52,
-    transmission: 0.06,
+    transmission: 0,
     interiorTint: "#dfe7f0",
   },
 };

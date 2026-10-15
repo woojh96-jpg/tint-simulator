@@ -48,7 +48,9 @@ export default function Glass({ points, vlt, filmId, zone, interior }: {
         <bufferAttribute attach="index" args={[QUAD_INDICES, 1]} />
       </bufferGeometry>
       {interior ? (
-        // Each pane multiplies the already rendered outdoor scene. This changes
+        // Each pane multiplies the already lit world. Zone lighting changes the
+        // incoming daylight/LED light before this product's transmission filter.
+        // This changes
         // transmitted light without painting a dark overlay over the dashboard.
         // A single pass avoids applying the filter twice to double-sided glass.
         <shaderMaterial

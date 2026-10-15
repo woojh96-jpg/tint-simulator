@@ -2,7 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useRef, useState, type SVGProps } from "react";
-import type { CameraView } from "./car-scene";
+import type { CameraView, DrivingTelemetry } from "./car-scene";
+import { useDrivingControls } from "../hooks/use-driving-controls";
+import { ZONE_LABELS, type DrivingZone } from "../lib/driving-config";
 import {
   DEFAULT_FILM_ID,
   DEFAULT_TINTS,
@@ -14,6 +16,7 @@ import {
   type TintZone,
 } from "./film-presets";
 import TintSelector from "./tint-selector";
+import DriveControls from "./drive-controls";
 
 const CarScene = dynamic(() => import("./car-scene"), {
   ssr: false,
@@ -24,11 +27,14 @@ const CAMERA_PRESETS: { name: CameraView; label: string }[] = [
   { name: "perspective", label: "외부 3D" },
   { name: "front", label: "정면" },
   { name: "side", label: "측면" },
+  { name: "chase", label: "추적" },
   { name: "interior", label: "실내" },
 ];
+const DRIVE_ROUTE: DrivingZone[] = ["outdoor", "surfaceParking", "ramp", "underground"];
+const INITIAL_TELEMETRY: DrivingTelemetry = { zone: "outdoor", speed: 0, x: 18, z: 0, height: 0 };
 
 function Icon({ name, ...props }: SVGProps<SVGSVGElement> & {
-  name: "arrow" | "rotate" | "info" | "close" | "check";
+  name: "arrow" | "rotate" | "info" | "close" | "check" | "play" | "pause";
 }) {
   const paths = {
     arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
@@ -36,6 +42,8 @@ function Icon({ name, ...props }: SVGProps<SVGSVGElement> & {
     info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10v.1" /></>,
     close: <path d="m6 6 12 12M6 18 18 6" />,
     check: <path d="m5 12 4 4L19 6" />,
+    play: <path d="m9 5 11 7-11 7V5Z" />,
+    pause: <path d="M9 5v14M16 5v14" />,
   };
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{paths[name]}</svg>;
 }
@@ -46,7 +54,12 @@ export default function Home() {
     tints: TintSettings;
     announcement: string;
   }>({ filmId: DEFAULT_FILM_ID, tints: { ...DEFAULT_TINTS }, announcement: "" });
-  const [view, setView] = useState<{ name: CameraView; revision: number }>({ name: "perspective", revision: 0 });
+  const [view, setView] = useState<{ name: CameraView; revision: number }>({ name: "chase", revision: 0 });
+  const [drivingEnabled, setDrivingEnabled] = useState(true);
+  const [resetRevision, setResetRevision] = useState(0);
+  const [telemetry, setTelemetry] = useState<DrivingTelemetry>(INITIAL_TELEMETRY);
+  const { inputRef, setTouchDirection, clearInput } = useDrivingControls(drivingEnabled);
+  const viewport = useRef<HTMLDivElement>(null);
   const guide = useRef<HTMLDialogElement>(null);
   const { filmId, tints } = configuration;
   const film = FILMS[filmId];
@@ -55,6 +68,24 @@ export default function Home() {
 
   function changeView(name: CameraView) {
     setView((current) => ({ name, revision: current.revision + 1 }));
+  }
+
+  function toggleDriving() {
+    clearInput();
+    setDrivingEnabled((current) => !current);
+    if (!drivingEnabled) viewport.current?.focus({ preventScroll: true });
+  }
+
+  function resetVehicle() {
+    clearInput();
+    setResetRevision((current) => current + 1);
+    setTelemetry(INITIAL_TELEMETRY);
+    viewport.current?.focus({ preventScroll: true });
+  }
+
+  function openGuide() {
+    clearInput();
+    guide.current?.showModal();
   }
 
   function changeFilm(nextFilmId: FilmId) {
@@ -81,7 +112,7 @@ export default function Home() {
       tints: { ...DEFAULT_TINTS },
       announcement: "Royal 101, 전면 35%, 측면 1열·2열과 후면 15%로 초기화했습니다.",
     });
-    changeView("perspective");
+    changeView("chase");
   }
 
   return (
@@ -90,7 +121,7 @@ export default function Home() {
         <a href="#simulator" className="brand" aria-label="틴트 스튜디오 홈"><span className="brand-symbol" aria-hidden="true"><i /><i /><i /></span>TINT<span className="brand-light">STUDIO</span><span className="brand-period">.</span></a>
         <nav aria-label="주 메뉴" className="header-nav flex items-center">
           <a href="#simulator" className="nav-active">시뮬레이터</a>
-          <button type="button" onClick={() => guide.current?.showModal()}>이용 가이드 <span aria-hidden="true">↗</span></button>
+          <button type="button" onClick={openGuide}>이용 가이드 <span aria-hidden="true">↗</span></button>
         </nav>
         <span className="edition">A NEW PERSPECTIVE ON LIGHT</span>
       </header>
@@ -98,20 +129,32 @@ export default function Home() {
       <main id="simulator" className="simulator-grid">
         <section id="preview" className={`car-stage${interior ? " interior-stage" : ""}`} aria-label="자동차 3D 미리보기" tabIndex={-1}>
           <div className="stage-heading">
-            <p className="eyebrow">LIGHT. SHADE. YOUR SIGNATURE.</p>
-            <h1>빛을 조절하다.<br />분위기를 완성하다.</h1>
-            <p className="stage-description">유리마다 다른 빛의 깊이.<br className="mobile-break" /> 안과 밖, 두 시선으로 비교해 보세요.</p>
+            <div className="stage-heading-copy"><p className="eyebrow">LIGHT IN MOTION. YOUR PERSPECTIVE.</p><h1>빛을 따라 달려보세요.</h1></div>
+            <div className="drive-actions">
+              <button type="button" className="driving-toggle" aria-pressed={drivingEnabled} onClick={toggleDriving}><Icon name={drivingEnabled ? "pause" : "play"} width="15" height="15" />{drivingEnabled ? "운전 일시정지" : "운전 시작"}</button>
+              <button type="button" className="vehicle-reset" onClick={resetVehicle} aria-label="차량 위치 초기화"><Icon name="rotate" width="15" height="15" /><span>위치 초기화</span></button>
+            </div>
+            <p id="driving-help" className="driving-instruction">{drivingEnabled ? "3D 화면을 클릭한 뒤 방향키 또는 WASD를 길게 눌러 운전하세요." : "운전이 일시정지되었습니다. 운전 시작을 누르면 다시 조작할 수 있습니다."}</p>
           </div>
-          <div className="live-indicator"><span /> LIVE 3D</div>
-          <div className="vehicle-viewport" role="group" aria-label={`${film.name}. ${tintSummary}. ${interior ? "운전석에서 전면과 측면 1열 유리를 바라보는 고정 시점입니다." : "마우스나 터치로 회전하거나 아래 시점 버튼을 사용하세요."}`}>
-            <CarScene filmId={filmId} tints={tints} view={view.name} viewRevision={view.revision} />
+          <div ref={viewport} className={`vehicle-viewport${view.name === "chase" ? " chase-viewport" : ""}`} role="group" tabIndex={0} aria-label={`${film.name}. ${tintSummary}. ${interior ? "운전석 시점" : view.name === "chase" ? "차량 추적 시점" : "외부 시점"}. 자동차 주행 화면.`} aria-describedby="driving-help route-help" onPointerDown={(event) => { if (event.target instanceof HTMLCanvasElement || event.target === event.currentTarget) event.currentTarget.focus({ preventScroll: true }); }}>
+            <CarScene filmId={filmId} tints={tints} view={view.name} viewRevision={view.revision} drivingEnabled={drivingEnabled} inputRef={inputRef} resetRevision={resetRevision} onTelemetry={setTelemetry} />
+            <div className="drive-dashboard" data-zone={telemetry.zone} data-car-x={telemetry.x.toFixed(3)} data-car-z={telemetry.z.toFixed(3)} data-car-height={telemetry.height.toFixed(3)}>
+              <div className="drive-readout"><p className="current-zone">현재 구역 <strong role="status" aria-live="polite">{ZONE_LABELS[telemetry.zone]}</strong></p><p className="drive-speed"><strong>{Math.round(Math.abs(telemetry.speed) * 3.6)}</strong><span>km/h</span></p></div>
+              <ol className="drive-route" aria-label="주행 경로">{DRIVE_ROUTE.map((zone, index) => <li key={zone} aria-current={telemetry.zone === zone ? "step" : undefined} data-passed={DRIVE_ROUTE.indexOf(telemetry.zone) > index}><span>{ZONE_LABELS[zone]}</span></li>)}</ol>
+              <p id="route-help" className="route-help">직진하면 지상 주차장과 지하로 연결됩니다<span>{telemetry.zone === "ramp" || telemetry.zone === "underground" ? ` · 높이 ${telemetry.height.toFixed(1)}m` : " · 약 100m 코스"}</span></p>
+            </div>
+            <div className="drive-key-guide" aria-label="키보드 운전 조작">
+              <p>Drive Controls</p>
+              <dl><div><dt>↑ / W</dt><dd>전진</dd></div><div><dt>↓ / S</dt><dd>후진</dd></div><div><dt>← / A</dt><dd>좌회전</dd></div><div><dt>→ / D</dt><dd>우회전</dd></div></dl>
+            </div>
+            <DriveControls key={`${drivingEnabled}-${resetRevision}`} enabled={drivingEnabled} onDirectionChange={setTouchDirection} />
           </div>
           <div className="stage-controls">
             <div className="view-presets" role="group" aria-label="자동차 시점 선택">
               {CAMERA_PRESETS.map((preset) => <button key={preset.name} type="button" aria-pressed={view.name === preset.name} onClick={() => changeView(preset.name)}>{preset.label}</button>)}
-              <button type="button" className="reset-view" onClick={() => changeView("perspective")} aria-label="외부 3D 시점으로 초기화" title="시점 초기화"><Icon name="rotate" width="16" height="16" /></button>
+              <button type="button" className="reset-view" onClick={() => changeView("chase")} aria-label="추적 시점으로 초기화" title="시점 초기화"><Icon name="rotate" width="16" height="16" /></button>
             </div>
-            <p className="orbit-hint"><Icon name={interior ? "info" : "rotate"} width="14" height="14" />{interior ? "운전석 고정 시점 · 유리 너머의 빛을 비교하세요" : "드래그하여 회전 · 스크롤하여 확대"}</p>
+            <p className="orbit-hint"><Icon name={interior || view.name === "chase" ? "info" : "rotate"} width="14" height="14" />{interior ? "운전석 시점 · 주행하며 유리 너머의 빛을 비교하세요" : view.name === "chase" ? "추적 카메라 · ↑ W 전진 / ↓ S 후진 / ← A · → D 조향" : "드래그하여 회전 · 스크롤하여 확대"}</p>
           </div>
           <div className="stage-bottom">
             <div className="model-info"><p className="model-eyebrow">THE STUDIO COLLECTION</p><p className="model-name">Concept Sedan <span>01</span></p><p className="model-detail"><span className="paint-swatch" /> 실버 메탈릭 <span className="detail-divider">/</span> 프로토타입</p></div>
@@ -146,15 +189,16 @@ export default function Home() {
         </aside>
       </main>
 
-      <footer className="studio-footer flex items-center justify-between"><p>DESIGNED AROUND YOUR PERSPECTIVE.</p><p><span className="footer-dot" /> 3D TINT EXPERIENCE <span className="footer-version">BETA 02</span></p></footer>
+      <footer className="studio-footer flex items-center justify-between"><p>DESIGNED AROUND YOUR PERSPECTIVE.</p><p><span className="footer-dot" /> 3D TINT EXPERIENCE <span className="footer-version">BETA 03</span></p></footer>
       <dialog ref={guide} className="guide-dialog" aria-labelledby="guide-title" onClick={(event) => { if (event.target === event.currentTarget) guide.current?.close(); }}>
         <div className="guide-content">
           <button type="button" className="guide-close" onClick={() => guide.current?.close()} aria-label="이용 가이드 닫기"><Icon name="close" /></button>
           <p className="eyebrow">A LITTLE GUIDANCE</p><h2 id="guide-title">새로운 시선을 경험하는 방법</h2>
           <ol>
-            <li><strong>안과 밖에서 둘러보세요.</strong><p>외부에서는 드래그해 자동차를 회전하고 휠 또는 두 손가락으로 확대할 수 있습니다. 정면·측면 버튼으로 시점을 바꾸고, 실내 버튼으로 운전석에서 유리 너머를 확인하세요. 실내는 고정 시점입니다.</p></li>
+            <li><strong>직접 운전하며 빛을 비교하세요.</strong><p>3D 화면을 클릭하고 ↑·W로 전진, ↓·S로 후진, ←·A와 →·D로 조향하세요. 키를 누르는 동안 계속 움직입니다. 모바일에서는 화면 아래 방향 버튼을 길게 누르며 전진과 조향을 함께 조작할 수 있습니다.</p></li>
+            <li><strong>야외에서 지하까지 달려보세요.</strong><p>시작 위치에서 약 100m 직진하면 지상 주차장, 진입 램프, 지하 주차장으로 연결됩니다. 현재 구역은 화면 위에 표시됩니다. 추적 카메라는 차를 따라가고, 실내에서는 운전석 시점으로 빛의 변화를 확인할 수 있습니다.</p></li>
             <li><strong>제품과 네 구역의 농도를 고르세요.</strong><p>Royal 제품별로 제공되는 농도가 다릅니다. 전면, 측면 1열, 측면 2열, 후면을 각각 설정할 수 있고, 좌우 측면에는 같은 값이 적용됩니다. 제품을 바꾸면 기존 값과 가장 가까운 농도가 적용됩니다.</p></li>
-            <li><strong>빛의 차이를 비교하세요.</strong><p>VLT가 낮을수록 외부가 어둡게 보입니다. 반사와 색감은 제품과 시점에 따라 달라집니다. 기본 설정은 Royal 101, 전면 35%, 측면 1열·2열과 후면 15%입니다.</p></li>
+            <li><strong>필요할 때 멈추고 다시 시작하세요.</strong><p>운전 일시정지로 차를 멈추고, 위치 초기화로 출발점에 돌아갈 수 있습니다. 설정 패널을 조작하거나 창을 벗어나면 입력이 해제됩니다. 설정 후 3D 화면을 클릭하면 계속 운전할 수 있습니다. 기본 썬팅은 Royal 101, 전면 35%, 나머지 15%입니다.</p></li>
           </ol>
           <button type="button" className="guide-confirm" onClick={() => guide.current?.close()}>시뮬레이션 시작하기 <Icon name="arrow" width="18" height="18" /></button>
         </div>

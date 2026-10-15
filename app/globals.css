@@ -33,26 +33,55 @@ button:focus-visible, a:focus-visible { outline: 2px solid #799c76; outline-offs
 .edition { font-size: 9px; letter-spacing: 1.6px; color: #80877e; }
 .simulator-grid { display: grid; grid-template-columns: minmax(0, 1fr) 394px; flex: 1; min-height: 0; }
 .car-stage { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(ellipse at 49% 51%, #fafbf8 0%, #f1f2ef 64%); }
-.stage-heading { position: relative; z-index: 1; padding: 35px 42px 0; pointer-events: none; }
+.stage-heading { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; padding: 23px 32px 0; pointer-events: none; }
 .eyebrow { font-size: 9px; font-weight: 500; letter-spacing: 2px; }
-.stage-heading > .eyebrow { color: #77816f; margin-bottom: 15px; }
-.stage-heading h1 { font-size: clamp(30px, 2.7vw, 41px); font-weight: 450; letter-spacing: -1.9px; line-height: 1.35; }
-.stage-description { color: #76806f; font-size: 12px; line-height: 1.9; margin-top: 12px; letter-spacing: -.2px; }
-.mobile-break { display: none; }
-.live-indicator { position: absolute; right: 30px; top: 38px; display: flex; align-items: center; gap: 6px; color: #697363; font-size: 9px; letter-spacing: 1.3px; border: 1px solid #d8dfd2; padding: 7px 10px; border-radius: 3px; }
-.live-indicator > span { width: 5px; height: 5px; border-radius: 50%; background: #8d9f7c; }
-.vehicle-viewport { position: absolute; inset: 174px 0 158px; }
+.stage-heading-copy > .eyebrow { color: #77816f; margin-bottom: 9px; font-size: 8px; letter-spacing: 1.6px; }
+.stage-heading h1 { font-size: clamp(22px, 2.1vw, 30px); font-weight: 450; letter-spacing: -1.35px; line-height: 1.3; }
+.driving-instruction { grid-column: 1 / -1; color: #6a7a62; font-size: 10px; line-height: 1.7; }
+.drive-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; pointer-events: auto; }
+.drive-actions > button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border: 1px solid #c5cfbd; border-radius: 4px; padding: 0 11px; font-size: 10px; color: #43543d; background: #f8faf5; white-space: nowrap; }
+.drive-actions > .driving-toggle { background: #2e4031; border-color: #2e4031; color: #eef4e7; }
+.drive-actions > .driving-toggle[aria-pressed="false"] { background: #c6d9b4; border-color: #b8cda5; color: #293d24; }
+.drive-actions > button:hover { border-color: #829774; }
+.vehicle-viewport { position: absolute; inset: 115px 0 205px; }
+.vehicle-viewport:focus-visible { outline: 2px solid #9cb78a; outline-offset: -4px; }
 .vehicle-viewport canvas { touch-action: none; cursor: grab; }
 .vehicle-viewport canvas:active { cursor: grabbing; }
-.interior-stage .vehicle-viewport canvas, .interior-stage .vehicle-viewport canvas:active { cursor: default; }
-@media (min-width: 901px) {
-  .interior-stage .stage-description { display: none; }
-}
+.drive-key-guide { position: absolute; left: 24px; bottom: 17px; padding: 12px 14px; border: 1px solid #d1dac9aa; border-radius: 5px; background: #f5f8efc9; color: #42543b; backdrop-filter: blur(8px); pointer-events: none; }
+.drive-key-guide > p { margin-bottom: 8px; font-size: 9px; letter-spacing: 1px; }
+.drive-key-guide dl { display: grid; gap: 5px; font-size: 9px; }
+.drive-key-guide dl > div { display: flex; gap: 16px; justify-content: space-between; }
+.drive-key-guide dt { color: #6c7f60; }
+@media (max-width: 900px), (pointer: coarse) { .drive-key-guide { display: none; } }
+.interior-stage .vehicle-viewport canvas, .interior-stage .vehicle-viewport canvas:active, .chase-viewport canvas, .chase-viewport canvas:active { cursor: default; }
+.drive-dashboard { position: absolute; top: 13px; left: 24px; right: 24px; max-width: 410px; padding: 11px 14px; background: #f7faf0df; border: 1px solid #cbd6c4d9; border-radius: 6px; backdrop-filter: blur(10px); pointer-events: none; box-shadow: 0 3px 15px #28391d09; }
+.drive-readout { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.current-zone { display: flex; align-items: center; gap: 9px; color: #7a886f; font-size: 9px; }
+.current-zone > strong { font-size: 13px; font-weight: 500; color: #2d442b; }
+.drive-speed { display: flex; align-items: baseline; gap: 5px; color: #4c6040; }
+.drive-speed > strong { font-size: 23px; line-height: 1; font-weight: 450; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.drive-speed > span { font-size: 8px; }
+.drive-route { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 9px; }
+.drive-route > li { display: flex; align-items: center; gap: 5px; color: #86917d; font-size: 9px; }
+.drive-route > li:not(:last-child)::after { content: "→"; font-size: 9px; color: #a4b198; }
+.drive-route > li[aria-current="step"] > span { color: #304f28; font-weight: 600; }
+.drive-route > li[aria-current="step"] > span::before { content: ""; display: inline-block; height: 4px; width: 4px; margin: 0 4px 2px 0; border-radius: 50%; background: #577749; }
+.drive-route > li[data-passed="true"] > span { color: #5f7652; }
+.route-help { margin-top: 6px; font-size: 8px; line-height: 1.7; color: #6a7d5d; }
+.route-help > span { white-space: nowrap; }
+.drive-touch-controls { position: absolute; bottom: 12px; left: 18px; right: 18px; display: none; justify-content: space-between; gap: 16px; pointer-events: none; }
+.drive-touch-cluster { display: flex; gap: 7px; }
+.drive-direction { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; width: 51px; min-height: 55px; padding: 4px; border: 1px solid #e0e7d4b3; border-radius: 7px; background: #233a2dcc; color: #f4f8e9; backdrop-filter: blur(8px); box-shadow: 0 3px 10px #1023171a; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+.drive-direction > span { font-size: 22px; line-height: 1; }
+.drive-direction > small { font-size: 8px; }
+.drive-direction[aria-pressed="true"] { background: #c6d9b4ed; border-color: #eef7df; color: #283d24; }
+.drive-direction:disabled { opacity: .4; cursor: default; }
+@media (pointer: coarse), (max-width: 900px) { .drive-touch-controls { display: flex; } }
 .scene-loading { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 17px; width: 100%; height: 100%; color: #718267; font-size: 12px; text-align: center; padding: 25px; }
 .scene-loading span { max-width: 320px; line-height: 1.8; }
 .loading-ring { width: 27px; height: 27px; border: 1px solid #d1d8cb; border-top-color: #667e5a; border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.stage-controls { position: absolute; bottom: 134px; left: 12px; right: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
+.stage-controls { position: absolute; bottom: 113px; left: 12px; right: 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
 .view-presets { pointer-events: auto; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; border: 1px solid #d6dbd1; border-radius: 30px; padding: 4px; background: #f9faf6ed; backdrop-filter: blur(8px); box-shadow: 0 3px 12px #30402904; }
 .view-presets > button { min-height: 44px; padding: 0 15px; border-radius: 24px; font-size: 11px; color: #65715f; }
 .view-presets > button:hover { background: #e4e9df; color: #2c3c29; }
@@ -150,32 +179,33 @@ button:focus-visible, a:focus-visible { outline: 2px solid #799c76; outline-offs
 @media (min-width: 1650px) {
   .simulator-grid { grid-template-columns: minmax(0, 1fr) 430px; }
   .config-panel { padding-left: 39px; padding-right: 39px; }
-  .stage-heading { padding: 48px 60px 0; }
+  .stage-heading { padding: 28px 60px 0; }
   .stage-bottom { left: 60px; right: 50px; }
-  .vehicle-viewport { inset: 177px 20px 158px; }
+  .vehicle-viewport { inset: 120px 20px 205px; }
 }
 @media (max-width: 1100px) and (min-width: 901px) {
   .simulator-grid { grid-template-columns: minmax(0, 1fr) 350px; }
   .config-panel { padding-left: 22px; padding-right: 22px; }
-  .stage-heading { padding-left: 29px; }
-  .stage-heading h1 { font-size: 30px; }
+  .stage-heading { padding-left: 24px; padding-right: 24px; gap: 11px; }
+  .stage-heading h1 { font-size: 23px; }
+  .stage-heading-copy > .eyebrow { font-size: 7px; letter-spacing: 1.1px; }
+  .drive-actions > button { padding: 0 8px; gap: 4px; font-size: 9px; }
   .stage-bottom { left: 29px; right: 24px; gap: 12px; }
   .model-name { font-size: 18px; }
   .glass-legend dl { gap: 8px; }
   .glass-legend dt { font-size: 8px; }
   .legend-view { display: none; }
   .edition { display: none; }
-  .live-indicator { top: 32px; right: 24px; font-size: 8px; }
 }
 @media (min-width: 901px) and (max-height: 760px) {
   .studio-header { height: 70px; }
-  .stage-heading { padding-top: 24px; }
-  .stage-heading > .eyebrow { margin-bottom: 10px; font-size: 8px; }
-  .stage-heading h1 { font-size: 29px; }
-  .stage-description { display: none; }
-  .vehicle-viewport { inset: 125px 0 150px; }
-  .live-indicator { top: 27px; }
-  .stage-controls { bottom: 122px; gap: 8px; }
+  .stage-heading { padding-top: 17px; gap: 8px 12px; }
+  .stage-heading-copy > .eyebrow { margin-bottom: 7px; }
+  .stage-heading h1 { font-size: 24px; }
+  .driving-instruction { font-size: 9px; }
+  .vehicle-viewport { inset: 98px 0 185px; }
+  .drive-dashboard { padding: 8px 12px; top: 10px; }
+  .stage-controls { bottom: 111px; gap: 8px; }
   .stage-bottom { bottom: 19px; padding-top: 14px; }
 }
 @media (max-width: 900px) {
@@ -185,12 +215,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid #799c76; outline-offs
   .edition { display: none; }
   .header-nav { gap: 24px; font-size: 11px; }
   .simulator-grid { grid-template-columns: minmax(0, 1fr); flex: auto; }
-  .car-stage { min-height: 690px; }
-  .stage-heading { padding: 34px 30px 0; }
-  .stage-heading h1 { font-size: 36px; }
-  .live-indicator { top: 36px; right: 30px; }
-  .vehicle-viewport { inset: 178px 0 160px; }
-  .stage-controls { bottom: 134px; }
+  .car-stage { min-height: 740px; }
+  .stage-heading { padding: 26px 30px 0; }
+  .stage-heading h1 { font-size: 28px; }
+  .vehicle-viewport { inset: 123px 0 205px; }
+  .stage-controls { bottom: 113px; }
   .stage-bottom { left: 30px; right: 30px; bottom: 26px; }
   .config-panel { padding: 28px max(30px, calc((100vw - 560px) / 2)); overflow: visible; overscroll-behavior-y: auto; }
   .panel-heading h2 { font-size: 26px; }
@@ -211,16 +240,22 @@ button:focus-visible, a:focus-visible { outline: 2px solid #799c76; outline-offs
   .brand-period { font-size: 24px; }
   .header-nav { gap: 0; font-size: 10px; }
   .header-nav .nav-active { display: none; }
-  .car-stage { min-height: 650px; }
-  .stage-heading { padding: 31px 23px 0; }
-  .stage-heading > .eyebrow { font-size: 7px; letter-spacing: 1.7px; margin-bottom: 15px; }
-  .stage-heading h1 { font-size: 31px; letter-spacing: -1.5px; }
-  .stage-description { font-size: 10px; margin-top: 12px; }
-  .mobile-break { display: block; }
-  .live-indicator { right: 23px; top: 33px; padding: 5px 7px; font-size: 7px; letter-spacing: .8px; }
-  .vehicle-viewport { inset: 197px -6px 167px; }
-  .stage-controls { bottom: 143px; gap: 10px; }
-  .view-presets > button { padding: 0 12px; font-size: 10px; }
+  .car-stage { min-height: 770px; }
+  .stage-heading { padding: 24px 23px 0; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .stage-heading-copy > .eyebrow { font-size: 7px; letter-spacing: 1.4px; margin-bottom: 8px; }
+  .stage-heading h1 { font-size: 26px; letter-spacing: -1.3px; }
+  .driving-instruction { font-size: 9px; }
+  .drive-actions > button { font-size: 10px; }
+  .vehicle-viewport { inset: 177px 0 214px; }
+  .drive-dashboard { top: 10px; left: 15px; right: 15px; padding: 9px 11px; }
+  .current-zone > strong { font-size: 12px; }
+  .drive-route { gap: 4px; }
+  .drive-route > li { font-size: 8px; gap: 4px; }
+  .route-help { font-size: 7px; }
+  .drive-touch-controls { left: 15px; right: 15px; }
+  .drive-direction { width: 47px; min-height: 53px; }
+  .stage-controls { bottom: 135px; gap: 9px; }
+  .view-presets > button { padding: 0 10px; font-size: 10px; }
   .orbit-hint { font-size: 9px; gap: 5px; }
   .stage-bottom { left: 23px; right: 23px; bottom: 22px; padding-top: 15px; gap: 10px; }
   .model-eyebrow { font-size: 6px; letter-spacing: 1.1px; }
@@ -242,6 +277,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid #799c76; outline-offs
   .studio-footer { padding: 18px 23px; flex-direction: column; align-items: flex-start; gap: 10px; }
   .studio-footer > p { font-size: 6px; letter-spacing: 1.1px; }
   .guide-content { padding: 40px 24px 26px; }
+}
+@media (max-width: 360px) {
+  .car-stage { min-height: 805px; }
+  .vehicle-viewport { top: 186px; bottom: 253px; }
+  .stage-controls { bottom: 131px; }
+  .view-presets { max-width: 270px; border-radius: 15px; }
+  .view-presets > button { flex: 1 0 28%; border-radius: 9px; }
+  .view-presets > .reset-view { flex-basis: 28%; border-left: 0; border-radius: 9px; }
+  .orbit-hint { max-width: 275px; line-height: 1.7; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
