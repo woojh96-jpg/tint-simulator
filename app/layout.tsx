@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "TINT STUDIO — 3D 썬팅 시뮬레이터",
-  description: "빛을 조절하다. 분위기를 완성하다. 3D 자동차에서 전면 유리의 썬팅 농도와 VLT를 실시간으로 비교해 보세요.",
+  description: "Royal 제품별 색감과 네 구역의 썬팅 농도를 설정하고, 3D 자동차의 외부와 운전석 실내에서 실시간으로 비교해 보세요.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

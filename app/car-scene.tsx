@@ -3,30 +3,22 @@
 import { Component, memo, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, Line, OrbitControls, RoundedBox } from "@react-three/drei";
-import { Color, DoubleSide, Quaternion, Shape, Vector3 } from "three";
+import { PerspectiveCamera, Quaternion, Shape, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import Glass, { type GlassPoints } from "./glass";
+import DrivingEnvironment from "./driving-environment";
+import { type FilmId, type TintSettings } from "./film-presets";
 
-export type CameraView = "perspective" | "front" | "side";
+export type CameraView = "perspective" | "front" | "side" | "interior";
 type Point = [number, number, number];
-type QuadPoints = [Point, Point, Point, Point];
+type QuadPoints = GlassPoints;
 
 const FRONT_GLASS: QuadPoints = [[-1.12, 1.22, 0.86], [-0.48, 1.88, 0.73], [-0.48, 1.88, -0.73], [-1.12, 1.22, -0.86]];
 const REAR_GLASS: QuadPoints = [[1.62, 1.22, -0.86], [1.02, 1.88, -0.73], [1.02, 1.88, 0.73], [1.62, 1.22, 0.86]];
 const SIDE_GLASS: QuadPoints[] = [-1, 1].map((side) => [[-1.06, 1.23, side * 0.89], [-0.44, 1.87, side * 0.75], [0.18, 1.87, side * 0.75], [0.18, 1.23, side * 0.89]]);
 const BACK_SIDE_GLASS: QuadPoints[] = [-1, 1].map((side) => [[0.27, 1.23, side * 0.89], [0.27, 1.87, side * 0.75], [0.98, 1.87, side * 0.75], [1.56, 1.23, side * 0.89]]);
-const QUAD_INDICES = new Uint16Array([0, 1, 2, 0, 2, 3]);
 const BODY_EXTRUDE = { depth: 1.76, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.075, bevelThickness: 0.075, curveSegments: 24 };
 const PAINT = { color: "#aeb8bd", metalness: 0.72, roughness: 0.27, clearcoat: 1, clearcoatRoughness: 0.2 };
-
-function Glass({ points, vlt = 30 }: { points: QuadPoints; vlt?: number }) {
-  const positions = useMemo(() => new Float32Array(points.flat()), [points]);
-  // Visual approximation: lower VLT means a darker, more opaque pane.
-  const color = useMemo(() => new Color("#14201f").lerp(new Color("#b0c9c6"), vlt / 100), [vlt]);
-  return <mesh>
-    <bufferGeometry onUpdate={(geometry) => geometry.computeVertexNormals()}><bufferAttribute attach="attributes-position" args={[positions, 3]} /><bufferAttribute attach="index" args={[QUAD_INDICES, 1]} /></bufferGeometry>
-    <meshPhysicalMaterial color={color} metalness={0.12} roughness={0.16} clearcoat={1} transparent opacity={1 - vlt / 100} side={DoubleSide} depthWrite={false} />
-  </mesh>;
-}
 
 function Pillar({ from, to, radius = 0.035 }: { from: Point; to: Point; radius?: number }) {
   const { midpoint, quaternion, length } = useMemo(() => {
@@ -50,6 +42,64 @@ const Wheel = memo(function Wheel({ x, z }: { x: number; z: number }) {
   </group>;
 });
 
+const CarInterior = memo(function CarInterior() {
+  return (
+    <group name="car-interior">
+      <RoundedBox args={[2.55, 0.1, 1.59]} radius={0.045} position={[0.2, 1.14, 0]}>
+        <meshStandardMaterial color="#252b29" roughness={0.9} />
+      </RoundedBox>
+      <RoundedBox args={[0.48, 0.17, 1.57]} radius={0.06} position={[-0.86, 1.29, 0]}>
+        <meshStandardMaterial color="#2c3433" roughness={0.82} />
+      </RoundedBox>
+      <RoundedBox args={[0.035, 0.14, 0.36]} radius={0.015} position={[-0.607, 1.34, 0.4]}>
+        <meshStandardMaterial color="#151e20" roughness={0.4} />
+      </RoundedBox>
+      {/* Driver instruments are simple inset geometry, with no font/image load. */}
+      {[-0.085, 0.085].map((offset) => (
+        <mesh key={offset} position={[-0.585, 1.345, 0.4 + offset]} rotation={[0, Math.PI / 2, 0]}>
+          <ringGeometry args={[0.037, 0.043, 32]} />
+          <meshBasicMaterial color="#a0b9ad" />
+        </mesh>
+      ))}
+      <RoundedBox args={[0.027, 0.22, 0.28]} radius={0.012} position={[-0.6, 1.39, -0.06]}>
+        <meshStandardMaterial color="#17282c" roughness={0.35} />
+      </RoundedBox>
+      <mesh position={[-0.58, 1.405, -0.06]}>
+        <boxGeometry args={[0.005, 0.007, 0.16]} />
+        <meshBasicMaterial color="#8ba99d" />
+      </mesh>
+      {[-0.43, 0.43].map((z) => (
+        <group key={z} name={z > 0 ? "driver-seat" : "passenger-seat"}>
+          <RoundedBox args={[0.3, 0.45, 0.45]} radius={0.085} position={[0.35, 1.38, z]} rotation={[0, 0, -0.15]}>
+            <meshStandardMaterial color="#606963" roughness={0.93} />
+          </RoundedBox>
+          <RoundedBox args={[0.55, 0.12, 0.46]} radius={0.05} position={[0.12, 1.2, z]}>
+            <meshStandardMaterial color="#737d73" roughness={0.93} />
+          </RoundedBox>
+          <RoundedBox args={[0.17, 0.17, 0.27]} radius={0.05} position={[0.38, 1.66, z]}>
+            <meshStandardMaterial color="#606963" roughness={0.93} />
+          </RoundedBox>
+          <RoundedBox args={[0.7, 0.14, 0.045]} radius={0.018} position={[-0.12, 1.25, z > 0 ? 0.84 : -0.84]}>
+            <meshStandardMaterial color="#343d38" roughness={0.75} />
+          </RoundedBox>
+        </group>
+      ))}
+      <RoundedBox args={[0.3, 0.4, 1.32]} radius={0.08} position={[1.12, 1.34, 0]}>
+        <meshStandardMaterial color="#606963" roughness={0.93} />
+      </RoundedBox>
+      <RoundedBox args={[0.8, 0.12, 0.17]} radius={0.035} position={[0.02, 1.24, 0]}>
+        <meshStandardMaterial color="#38413c" roughness={0.8} />
+      </RoundedBox>
+      <group name="steering-wheel" position={[-0.5, 1.39, 0.43]} rotation={[0, Math.PI / 2, -0.18]}>
+        <mesh><torusGeometry args={[0.16, 0.025, 12, 36]} /><meshStandardMaterial color="#1f2824" roughness={0.7} /></mesh>
+        <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.055, 0.055, 0.035, 16]} /><meshStandardMaterial color="#37443e" /></mesh>
+        <mesh><boxGeometry args={[0.27, 0.025, 0.025]} /><meshStandardMaterial color="#899b91" metalness={0.5} roughness={0.4} /></mesh>
+        <mesh position={[0, -0.075, 0]}><boxGeometry args={[0.025, 0.12, 0.025]} /><meshStandardMaterial color="#899b91" metalness={0.5} roughness={0.4} /></mesh>
+      </group>
+    </group>
+  );
+});
+
 const CarBody = memo(function CarBody() {
   const profile = useMemo(() => {
     const shape = new Shape();
@@ -67,15 +117,7 @@ const CarBody = memo(function CarBody() {
   return <group>
     <mesh position={[0, 0, -0.88]} castShadow receiveShadow><extrudeGeometry args={[profile, BODY_EXTRUDE]} /><meshPhysicalMaterial {...PAINT} /></mesh>
     <RoundedBox args={[1.56, 0.095, 1.53]} radius={0.045} position={[0.27, 1.92, 0]} castShadow><meshPhysicalMaterial {...PAINT} /></RoundedBox>
-    <RoundedBox args={[2.55, 0.1, 1.59]} radius={0.045} position={[0.2, 1.14, 0]}><meshStandardMaterial color="#252b29" roughness={0.9} /></RoundedBox>
-    <RoundedBox args={[0.4, 0.16, 1.54]} radius={0.06} position={[-0.88, 1.21, 0]}><meshStandardMaterial color="#3c4541" roughness={0.85} /></RoundedBox>
-    {[-0.43, 0.43].map((z) => <group key={z}>
-      <RoundedBox args={[0.42, 0.46, 0.45]} radius={0.09} position={[0.35, 1.37, z]} rotation={[0, 0, -0.15]}><meshStandardMaterial color="#6b7167" roughness={0.93} /></RoundedBox>
-      <RoundedBox args={[0.55, 0.12, 0.46]} radius={0.05} position={[0.12, 1.2, z]}><meshStandardMaterial color="#777d71" roughness={0.93} /></RoundedBox>
-      <RoundedBox args={[0.17, 0.17, 0.27]} radius={0.05} position={[0.38, 1.66, z]}><meshStandardMaterial color="#6b7167" roughness={0.93} /></RoundedBox>
-    </group>)}
-    <RoundedBox args={[0.3, 0.4, 1.32]} radius={0.08} position={[1.12, 1.34, 0]}><meshStandardMaterial color="#6b7167" roughness={0.93} /></RoundedBox>
-    <mesh position={[-0.65, 1.39, 0.43]} rotation={[0, Math.PI / 2, -0.35]}><torusGeometry args={[0.15, 0.023, 8, 24]} /><meshStandardMaterial color="#232a27" /></mesh>
+    <CarInterior />
     {[-1, 1].map((side) => <group key={side}>
       <Pillar from={[-1.14, 1.19, side * 0.9]} to={[-0.5, 1.9, side * 0.75]} radius={0.045} />
       <Pillar from={[1.66, 1.18, side * 0.9]} to={[1.03, 1.9, side * 0.75]} radius={0.055} />
@@ -101,14 +143,32 @@ function CameraControls({ view, viewRevision }: { view: CameraView; viewRevision
   const controls = useRef<OrbitControlsImpl>(null);
   const { camera, size, invalidate } = useThree();
   useEffect(() => {
+    if (camera instanceof PerspectiveCamera) {
+      camera.fov = view === "interior" ? 70 : 32;
+      camera.near = view === "interior" ? 0.025 : 0.1;
+      camera.far = 120;
+      camera.updateProjectionMatrix();
+    }
+    if (view === "interior") {
+      // Ahead of the seat/headrest and behind the steering wheel, facing -X.
+      // A slight leftward look also includes the driver's first-row side glass.
+      camera.position.set(-0.18, 1.66, 0.39);
+      camera.lookAt(-3.8, 1.5, 1.0);
+      invalidate();
+      return;
+    }
     const fit = Math.max(1, 1.18 / (size.width / size.height));
-    const positions: Record<CameraView, Point> = { perspective: [-6.4, 3.5, 5.8], front: [-8.7, 2.5, 0], side: [0, 2.8, 8.8] };
+    const positions: Record<Exclude<CameraView, "interior">, Point> = { perspective: [-6.4, 3.5, 5.8], front: [-8.7, 2.5, 0], side: [0, 2.8, 8.8] };
     const [x, y, z] = positions[view];
     camera.position.set(x * fit, (y - 0.85) * fit + 0.85, z * fit);
+    camera.lookAt(0, 0.85, 0);
     controls.current?.target.set(0, 0.85, 0);
     controls.current?.update();
     invalidate();
   }, [camera, invalidate, size.width, size.height, view, viewRevision]);
+  // Unmounting avoids OrbitControls' external distance clamps moving the
+  // interior camera out of the cabin, even while controls would be disabled.
+  if (view === "interior") return null;
   return <OrbitControls ref={controls} makeDefault enablePan={false} enableDamping dampingFactor={0.08} minDistance={5.5} maxDistance={15} minPolarAngle={Math.PI / 5} maxPolarAngle={Math.PI / 2.15} target={[0, 0.85, 0]} rotateSpeed={0.65} zoomSpeed={0.7} />;
 }
 
@@ -120,9 +180,16 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
   }
 }
 
-export default function CarScene({ vlt, view, viewRevision }: { vlt: number; view: CameraView; viewRevision: number }) {
+export default function CarScene({ filmId, tints, view, viewRevision }: {
+  filmId: FilmId;
+  tints: TintSettings;
+  view: CameraView;
+  viewRevision: number;
+}) {
+  const interior = view === "interior";
   return <SceneBoundary>
-    <Canvas shadows dpr={[1, 1.5]} frameloop="demand" camera={{ position: [-6.4, 3.5, 5.8], fov: 32, near: 0.1, far: 60 }} gl={{ antialias: true, alpha: true }} fallback={<div className="scene-loading">이 브라우저는 3D 미리보기를 지원하지 않습니다.</div>}>
+    <Canvas shadows dpr={[1, 1.5]} frameloop="demand" camera={{ position: [-6.4, 3.5, 5.8], fov: 32, near: 0.1, far: 120 }} gl={{ antialias: true, alpha: true }} fallback={<div className="scene-loading">이 브라우저는 3D 미리보기를 지원하지 않습니다.</div>}>
+      {interior && <DrivingEnvironment />}
       <ambientLight intensity={0.6} /><hemisphereLight args={["#f4f8ff", "#8b9383", 1.4]} />
       <directionalLight position={[-3, 7, 4]} intensity={3} castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} shadow-normalBias={0.03} shadow-camera-left={-5} shadow-camera-right={5} shadow-camera-top={5} shadow-camera-bottom={-5} />
       <directionalLight position={[4, 3, -5]} intensity={1.8} color="#e5f0ff" />
@@ -131,12 +198,16 @@ export default function CarScene({ vlt, view, viewRevision }: { vlt: number; vie
         <Lightformer intensity={2} position={[-4, 2, 4]} rotation={[0, Math.PI / 4, 0]} scale={[5, 3, 1]} />
         <Lightformer intensity={2.5} position={[3, 3, -4]} rotation={[0, -Math.PI / 4, 0]} scale={[6, 2, 1]} />
       </Environment>
-      <CarBody /><Glass points={FRONT_GLASS} vlt={vlt} /><Glass points={REAR_GLASS} />
-      {SIDE_GLASS.map((points, index) => <Glass key={`front-${index}`} points={points} />)}
-      {BACK_SIDE_GLASS.map((points, index) => <Glass key={`rear-${index}`} points={points} />)}
-      <Line points={[...FRONT_GLASS, FRONT_GLASS[0]]} color="#a8c6b1" lineWidth={1.5} transparent opacity={0.85} />
-      <ContactShadows position={[0, -0.01, 0]} opacity={0.42} scale={13} blur={2.8} far={4} resolution={256} color="#34423a" frames={1} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.025, 0]} receiveShadow><planeGeometry args={[200, 200]} /><shadowMaterial transparent opacity={0.1} /></mesh>
+      <CarBody />
+      <Glass points={FRONT_GLASS} vlt={tints.front} filmId={filmId} zone="front" interior={interior} />
+      <Glass points={REAR_GLASS} vlt={tints.rear} filmId={filmId} zone="rear" interior={interior} />
+      {SIDE_GLASS.map((points, index) => <Glass key={`front-${index}`} points={points} vlt={tints.frontSide} filmId={filmId} zone="frontSide" interior={interior} />)}
+      {BACK_SIDE_GLASS.map((points, index) => <Glass key={`rear-${index}`} points={points} vlt={tints.rearSide} filmId={filmId} zone="rearSide" interior={interior} />)}
+      {!interior && <>
+        <Line points={[...FRONT_GLASS, FRONT_GLASS[0]]} color="#a8c6b1" lineWidth={1.5} transparent opacity={0.65} />
+        <ContactShadows position={[0, -0.01, 0]} opacity={0.42} scale={13} blur={2.8} far={4} resolution={256} color="#34423a" frames={1} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.025, 0]} receiveShadow><planeGeometry args={[200, 200]} /><shadowMaterial transparent opacity={0.1} /></mesh>
+      </>}
       <CameraControls view={view} viewRevision={viewRevision} />
     </Canvas>
   </SceneBoundary>;
