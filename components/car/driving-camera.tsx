@@ -6,6 +6,7 @@ import { OrbitControls } from "@react-three/drei";
 import { Euler, PerspectiveCamera, Quaternion, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { DrivingState } from "../../lib/driving-config";
+import { CAMERA_MOUNTS, centerChaseCamera, getInteriorFov } from "../../lib/camera-alignment";
 
 export type CameraView = "perspective" | "front" | "side" | "interior" | "chase";
 
@@ -23,7 +24,7 @@ export default function DrivingCamera({ stateRef, view, viewRevision, resetRevis
     quaternion: new Quaternion(),
     position: new Vector3(),
     target: new Vector3(),
-    smoothedTarget: new Vector3(),
+    lateralAxis: new Vector3(),
     origin: new Vector3(),
     initialized: false,
     configured: false,
@@ -39,7 +40,7 @@ export default function DrivingCamera({ stateRef, view, viewRevision, resetRevis
     const state = stateRef.current;
     if (!data.configured) {
       if (camera instanceof PerspectiveCamera) {
-        camera.fov = view === "interior" ? 70 : view === "chase" ? 50 : 38;
+        camera.fov = view === "interior" ? getInteriorFov(size.width / size.height) : view === "chase" ? 50 : 38;
         camera.near = view === "interior" ? 0.025 : 0.1;
         camera.far = 230;
         camera.updateProjectionMatrix();
@@ -59,25 +60,25 @@ export default function DrivingCamera({ stateRef, view, viewRevision, resetRevis
     data.rotation.set(0, state.heading, state.pitch, "YXZ");
     data.quaternion.setFromEuler(data.rotation);
     if (view === "interior") {
-      data.position.set(-0.18, 1.66, 0.39);
-      data.target.set(-3.8, 1.5, 1);
+      data.position.set(...CAMERA_MOUNTS.interiorEye);
+      data.target.set(...CAMERA_MOUNTS.interiorTarget);
     } else {
-      data.position.set(8.5, 4.1, 3.1);
-      data.target.set(-3.5, 0.8, 0);
+      data.position.set(...CAMERA_MOUNTS.chaseEye);
+      data.target.set(...CAMERA_MOUNTS.chaseTarget);
     }
     data.origin.set(state.x, state.y, state.z);
     data.position.applyQuaternion(data.quaternion).add(data.origin);
     data.target.applyQuaternion(data.quaternion).add(data.origin);
     if (view === "interior" || !data.initialized) {
       camera.position.copy(data.position);
-      data.smoothedTarget.copy(data.target);
     } else {
       const blend = 1 - Math.exp(-4 * Math.min(delta, 0.1));
       camera.position.lerp(data.position, blend);
-      data.smoothedTarget.lerp(data.target, blend);
+      data.lateralAxis.set(0, 0, 1).applyQuaternion(data.quaternion);
+      centerChaseCamera(camera.position, data.origin, data.lateralAxis);
     }
     camera.up.set(0, 1, 0);
-    camera.lookAt(data.smoothedTarget);
+    camera.lookAt(data.target);
     data.initialized = true;
   });
 

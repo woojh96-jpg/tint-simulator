@@ -4,6 +4,7 @@ import { memo, useMemo } from "react";
 import { Line, RoundedBox } from "@react-three/drei";
 import { Quaternion, Shape, Vector3 } from "three";
 import type { GlassPoints } from "../../app/glass";
+import SideMirror from "./side-mirror";
 
 type Point = [number, number, number];
 type QuadPoints = GlassPoints;
@@ -122,7 +123,7 @@ const CarBody = memo(function CarBody() {
       <Pillar from={[-1.13, 1.19, side * 0.9]} to={[1.65, 1.19, side * 0.9]} radius={0.025} />
       <RoundedBox args={[0.25, 0.035, 0.035]} radius={0.015} position={[0.02, 1.04, side * 0.966]}><meshStandardMaterial color="#5c6a6c" metalness={0.85} roughness={0.25} /></RoundedBox>
       <RoundedBox args={[0.25, 0.035, 0.035]} radius={0.015} position={[1.01, 1.04, side * 0.966]}><meshStandardMaterial color="#5c6a6c" metalness={0.85} roughness={0.25} /></RoundedBox>
-      <RoundedBox args={[0.3, 0.14, 0.18]} radius={0.06} position={[-0.83, 1.31, side * 1.04]} castShadow><meshPhysicalMaterial {...PAINT} /></RoundedBox>
+      <SideMirror side={side} />
       <mesh position={[0, 0.55, side * 0.93]}><boxGeometry args={[1.88, 0.075, 0.07]} /><meshStandardMaterial color="#34413f" metalness={0.6} roughness={0.4} /></mesh>
       <Wheel x={-1.55} z={side * 0.94} /><Wheel x={1.55} z={side * 0.94} />
       <Line points={[[0.24, 1.12, side * 0.96], [0.24, 0.64, side * 0.96], [0.15, 0.61, side * 0.96]]} color="#708084" lineWidth={0.7} />

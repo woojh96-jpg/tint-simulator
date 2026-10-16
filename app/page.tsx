@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState, type SVGProps } from "react";
+import { useRef, useState, type MouseEvent, type SVGProps } from "react";
 import type { CameraView, DrivingTelemetry } from "./car-scene";
 import { useDrivingControls } from "../hooks/use-driving-controls";
 import { ZONE_LABELS, type DrivingZone } from "../lib/driving-config";
@@ -88,6 +88,15 @@ export default function Home() {
     guide.current?.showModal();
   }
 
+  function restoreDrivingFocus(event: MouseEvent<HTMLElement>) {
+    // Pointer selections should be followed immediately by driving. Keyboard
+    // activation keeps its focus, so radios remain editable with native keys.
+    if (event.detail === 0 || !(event.target instanceof Element)) return;
+    const control = event.target.closest('button, label, input[type="radio"]');
+    if (!control || control.closest('dialog, .drive-touch-controls')) return;
+    requestAnimationFrame(() => viewport.current?.focus({ preventScroll: true }));
+  }
+
   function changeFilm(nextFilmId: FilmId) {
     setConfiguration((current) => {
       const nextTints = reconcileTintSettings(current.tints, nextFilmId);
@@ -126,7 +135,7 @@ export default function Home() {
         <span className="edition">A NEW PERSPECTIVE ON LIGHT</span>
       </header>
 
-      <main id="simulator" className="simulator-grid">
+      <main id="simulator" className="simulator-grid" onClickCapture={restoreDrivingFocus}>
         <section id="preview" className={`car-stage${interior ? " interior-stage" : ""}`} aria-label="자동차 3D 미리보기" tabIndex={-1}>
           <div className="stage-heading">
             <div className="stage-heading-copy"><p className="eyebrow">LIGHT IN MOTION. YOUR PERSPECTIVE.</p><h1>빛을 따라 달려보세요.</h1></div>
@@ -134,7 +143,7 @@ export default function Home() {
               <button type="button" className="driving-toggle" aria-pressed={drivingEnabled} onClick={toggleDriving}><Icon name={drivingEnabled ? "pause" : "play"} width="15" height="15" />{drivingEnabled ? "운전 일시정지" : "운전 시작"}</button>
               <button type="button" className="vehicle-reset" onClick={resetVehicle} aria-label="차량 위치 초기화"><Icon name="rotate" width="15" height="15" /><span>위치 초기화</span></button>
             </div>
-            <p id="driving-help" className="driving-instruction">{drivingEnabled ? "3D 화면을 클릭한 뒤 방향키 또는 WASD를 길게 눌러 운전하세요." : "운전이 일시정지되었습니다. 운전 시작을 누르면 다시 조작할 수 있습니다."}</p>
+            <p id="driving-help" className="driving-instruction"><strong>방향키 또는 WASD로 운전</strong><span>{drivingEnabled ? "3D 화면을 클릭한 뒤 운전할 수 있습니다." : "운전이 일시정지되었습니다. 운전 시작을 눌러주세요."}</span></p>
           </div>
           <div ref={viewport} className={`vehicle-viewport${view.name === "chase" ? " chase-viewport" : ""}`} role="group" tabIndex={0} aria-label={`${film.name}. ${tintSummary}. ${interior ? "운전석 시점" : view.name === "chase" ? "차량 추적 시점" : "외부 시점"}. 자동차 주행 화면.`} aria-describedby="driving-help route-help" onPointerDown={(event) => { if (event.target instanceof HTMLCanvasElement || event.target === event.currentTarget) event.currentTarget.focus({ preventScroll: true }); }}>
             <CarScene filmId={filmId} tints={tints} view={view.name} viewRevision={view.revision} drivingEnabled={drivingEnabled} inputRef={inputRef} resetRevision={resetRevision} onTelemetry={setTelemetry} />
@@ -198,7 +207,7 @@ export default function Home() {
             <li><strong>직접 운전하며 빛을 비교하세요.</strong><p>3D 화면을 클릭하고 ↑·W로 전진, ↓·S로 후진, ←·A와 →·D로 조향하세요. 키를 누르는 동안 계속 움직입니다. 모바일에서는 화면 아래 방향 버튼을 길게 누르며 전진과 조향을 함께 조작할 수 있습니다.</p></li>
             <li><strong>야외에서 지하까지 달려보세요.</strong><p>시작 위치에서 약 100m 직진하면 지상 주차장, 진입 램프, 지하 주차장으로 연결됩니다. 현재 구역은 화면 위에 표시됩니다. 추적 카메라는 차를 따라가고, 실내에서는 운전석 시점으로 빛의 변화를 확인할 수 있습니다.</p></li>
             <li><strong>제품과 네 구역의 농도를 고르세요.</strong><p>Royal 제품별로 제공되는 농도가 다릅니다. 전면, 측면 1열, 측면 2열, 후면을 각각 설정할 수 있고, 좌우 측면에는 같은 값이 적용됩니다. 제품을 바꾸면 기존 값과 가장 가까운 농도가 적용됩니다.</p></li>
-            <li><strong>필요할 때 멈추고 다시 시작하세요.</strong><p>운전 일시정지로 차를 멈추고, 위치 초기화로 출발점에 돌아갈 수 있습니다. 설정 패널을 조작하거나 창을 벗어나면 입력이 해제됩니다. 설정 후 3D 화면을 클릭하면 계속 운전할 수 있습니다. 기본 썬팅은 Royal 101, 전면 35%, 나머지 15%입니다.</p></li>
+            <li><strong>필요할 때 멈추고 다시 시작하세요.</strong><p>운전 일시정지로 차를 멈추고, 위치 초기화로 출발점에 돌아갈 수 있습니다. 버튼이나 제품·농도를 마우스로 선택한 뒤에도 바로 운전할 수 있습니다. 입력창이나 키보드로 선택 중인 농도, 이용 가이드를 조작할 때는 운전 입력을 받지 않습니다. 창을 벗어나면 입력이 해제됩니다. 기본 썬팅은 Royal 101, 전면 35%, 나머지 15%입니다.</p></li>
           </ol>
           <button type="button" className="guide-confirm" onClick={() => guide.current?.close()}>시뮬레이션 시작하기 <Icon name="arrow" width="18" height="18" /></button>
         </div>
